@@ -1,0 +1,16 @@
+*.DS_Store
+*.vscode
+*.pyc
+*.ipynb_checkpoints
+__pycache__/
+*.py[cod]
+*$py.class
+
+archive/
+results/
+models/
+raw_data/
+
+*model_data*
+*_hourly*
+*forecasts*
