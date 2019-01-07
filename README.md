@@ -1,5 +1,5 @@
 # Predicting Distributed Solar Power Production
-### A lightweight approach to predicting solar power generation, based on weather conditions at a small set of coordinates
+### A lightweight approach to predicting solar power generation based on weather conditions at a small set of coordinates
 
 
 ## Contents
@@ -80,15 +80,15 @@ Results for day-ahead forecasts aren't quite as strong.
 | DE(TransnetBW) |293.1     |12.26    |
 | DE(50Hertz)    |827.4     |15.57    |
 
-While the error is broadly acceptable, particularly for France, Spain, and Italy, the models struggle to predict abrupt peaks and dips. This is particularly evident for Italy below. 
+While the error is broadly acceptable, particularly for France, Spain, and Italy, the models struggle to predict abrupt peaks and dips. This is evident for France below. 
 
-![alt text](IT_da.png)
+![alt text](FR_da.png)
 
 Better aligning coordinates with the actual generation profile should help ameliorate this.
 
 
 ## Conclusion
-Using historical generation, annual installed capacity, and the weather at just five broadly distributed coordinates across an operators area of control, we're able to predict actual generation to within 5% and 12% for intra-day and day-ahead forecasts respectively. While not without its limitations, particularly for day ahead forecasting, the approach is quite promising. 
+Using historical generation, annual installed capacity, and the weather at just five broadly distributed coordinates across an operators area of control, we're able to predict actual generation to within 5% and 12% for intra-day and day-ahead forecasts respectively. While the viability of this approach for day-ahead predictions remains to be seen, it is quite promising for intra-day forecasting. 
 
 
 ## Next Steps
@@ -112,14 +112,14 @@ data files
 - processed_data
     - actuals.csv: Actual solar power generation by operator
     - capacity.csv: Annual installed capacity by operator
-    - daily_weather_hist.csv: Historical daily weather data by coordinate
-    - hourly_weather_hist.csv: Historical hourly weather data by coordinate 
     - int_lengths.yml: Generation reporting intervals by operator
 
 - sample_raw_data
     - IT_Actual_Generation_2017-2018.csv: Actual generation by production type for Italy
     - IT_Installed_Capacity_2016-2019.csv: Installed capacity by production type for Italy
     - wr_2018-11-14_2018-11-15.json: Historical weather data across coordinates pulled from the [Dark Sky API](https://darksky.net/dev)
+
+Weather data is large, and sits behind the Dark Sky API, so it isn't included here. Instructions on extracting it can be found below.
 
 
 ### Extraction, Exploration, and Modeling
