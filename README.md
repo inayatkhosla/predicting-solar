@@ -103,7 +103,7 @@ The technique needs to be tested on winter months. Dimensionality reduction and 
 ## Usage
 ### Environment
 - Create environment `conda env create -f environment.yml`
-- We'll use the fastai library (a wrapper around PyTorch) to keep things simple. Required modules are available in the fastai folder
+- We'll use the fastai library (a wrapper around PyTorch) to make this a gentle introduction for those new to deep learning. Required modules are available in the fastai folder
 
 ### Data
 The data folder contains both cleaned, processed data, as well as sample raw
