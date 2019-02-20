@@ -60,7 +60,7 @@ The approach performs quite well for intra-day forecasts, with a Median Absolute
 
 Performance for Tennet in September is shown below.
 
-![alt text](tennet_id.png)
+![alt text](images/tennet_id.png)
 
 This is encouraging, showing that a quick, lightweight approach can be relatively accurate for near-term forecasting.
 
@@ -82,7 +82,7 @@ Results for day-ahead forecasts aren't quite as strong, with abrupt peaks and di
 
 This is evident for France below. 
 
-![alt text](FR_da.png)
+![alt text](images/FR_da.png)
 
 Better weather data, and coordinates better aligned with the actual generation profile should help ameliorate this.
 
