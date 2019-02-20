@@ -10,6 +10,7 @@ archive/
 results/
 models/
 raw_data/
+fastai/
 
 *model_data*
 *_hourly*
