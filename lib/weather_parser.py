@@ -137,8 +137,8 @@ class WeatherParser(object):
         
         
     def get_coordinates(self):
-        with open(self.coordinates, 'r') as stream:
-            self.coords = yaml.load(stream)
+        with open(self.coordinates, 'r') as f:
+            self.coords = yaml.load(f)
         
         
     def get_filepath(self):

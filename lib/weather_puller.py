@@ -33,8 +33,8 @@ class WeatherPuller(object):
 
         
     def get_coordinates(self):
-        with open(self.coordinates, 'r') as stream:
-            self.coords = yaml.load(stream)
+        with open(self.coordinates, 'r') as f:
+            self.coords = yaml.load(f)
     
     
     def set_filepath(self):
