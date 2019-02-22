@@ -79,9 +79,9 @@ Results for day-ahead forecasts aren't quite as strong, with abrupt peaks and di
 | DE(TransnetBW) |293.1     |12.26    |
 | DE(50Hertz)    |827.4     |15.57    |
 
-This is evident for France below. 
+This is evident for Italy below. 
 
-![alt text](images/FR_da.png)
+![alt text](images/IT_da.png)
 
 Better weather data, coordinates better aligned with the actual generation profile, and information on curtailment decisions should help ameliorate this.
 
