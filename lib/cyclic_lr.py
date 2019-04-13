@@ -1,6 +1,6 @@
 """
 cyclic_lr.py:
-    Implements Leslie Smith Cyclic Learning Rate Protocol for PyTorch
+    Implements Leslie Smith's Cyclic Learning Rate Protocol for PyTorch
     https://arxiv.org/abs/1506.01186
     Sourced from https://github.com/thomasjpfan/pytorch/blob/401ec389db2c9d2978917a6e4d1101b20340d7e7/torch/optim/lr_scheduler.py
 """

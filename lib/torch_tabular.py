@@ -211,7 +211,7 @@ def embedding(ni,nf):
 class TabularModel(nn.Module):
     """
     Fully connected network architecture with entity embeddings
-    https://github.com/fastai/fastai/tree/master/fastai
+    See https://github.com/fastai/fastai/tree/master/fastai
 
     Args:
         emb_szs (list of tuples): Number of categories in, number of features
