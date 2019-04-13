@@ -1,5 +1,5 @@
 # Predicting Distributed Solar Power Production
-### A lightweight approach to predicting solar power generation based on regional weather variations, using tree ensembles and deep learning
+### A lightweight approach to predicting solar power generation based on regional weather variations using tree ensembles and deep learning
 
 
 ## Contents
@@ -89,7 +89,7 @@ This is evident for Italy below.
 
 Better weather data, coordinates better aligned with the actual generation profile, and information on curtailment decisions should help ameliorate this.
 
-Performance can further be improved by building separate models for periods of high and low generation, and perhaps even leveraging them selectively when forecasts say that the weather is going are to be unseasonably bright or gray.
+Performance can further be improved by building separate models for periods of high and low generation, and perhaps even leveraging them selectively when forecasts predict unseasonable weather.
 
 
 ## Conclusion
