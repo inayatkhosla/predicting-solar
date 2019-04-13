@@ -24,18 +24,18 @@ import pandas as pd
 import numpy as np
 
 import xgboost as xgb
-import nmslib # a much faster implementation of KNN than sklearn's
+import nmslib # faster implementation of KNN than sklearn's
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-
-from fastai.structured import *  
-from fastai.column_data import * 
 
 import torch
 import torch.optim as optim
 import torch.nn as nn
 from functools import partial
+
+from fastai.structured import *  
+from fastai.column_data import * 
 
 from lib import torch_tabular as t
 from lib import cyclic_lr as c
@@ -473,7 +473,7 @@ class TorchNN(object):
         return predictions
 
 
-    class NNModeler(object):
+class NNModeler(object):
     """
     Trains and predicts using a neural network with entity embeddings - fastai
 
