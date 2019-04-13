@@ -2,7 +2,9 @@
 modelers.py:
     Trains, validates, and tests Random Forests, XGBoost, KNN,
     and Neural Nets across a range of operators, time periods, 
-    and hyperparameters
+    and hyperparameters. The network can be trained using fastai
+    (for those new to deep learning) or pytorch (for those with
+    more experience)
 
     PredictionGenerator (cls): Wrapper - generates predictions across a 
     range of operators and time periods
@@ -10,23 +12,33 @@ modelers.py:
     and time period
     ModelPrepper (cls): Prepares data for modeling
     KNNModeler (cls): Trains and predicts using K Nearest Neighbors
+    TorchNNModeler (cls): Trains and predicts using a neural network with 
+    entity embeddings - pytorch
     NNModeler (cls): Trains and predicts using a neural network with 
-    entity embeddings
+    entity embeddings - fastai
+
 """
 
 import pathlib
 import pandas as pd
 import numpy as np
 
-import nmslib # a much faster implementation of KNN than sklearn's
 import xgboost as xgb
-from fastai.structured import * # we'll use fastai (a wrapper around PyTorch) 
-from fastai.column_data import * # to keep things simple
+import nmslib # a much faster implementation of KNN than sklearn's
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-import pdb
+from fastai.structured import *  
+from fastai.column_data import * 
+
+import torch
+import torch.optim as optim
+import torch.nn as nn
+from functools import partial
+
+from lib import torch_tabular as t
+from lib import cyclic_lr as c
 
 
 class PredictionGenerator(object):
@@ -42,9 +54,11 @@ class PredictionGenerator(object):
         train_start (str): Train period start
         prediction_periods (list): Periods for which to generate predictions
         period_length (int): Prediction period length in days
-        val (bool): Whether to predictions are for the validation or test set
+        val (bool): Whether predictions are for the validation or test set
+        pytorch (bool): Whether to use fastai or pytorch
     """
-    def __init__(self, data, operators, features, params, train_start, prediction_periods, period_length, val=True):
+    def __init__(self, data, operators, features, params, train_start, 
+                 prediction_periods, period_length, val=True, pytorch=True):
         self.data = data
         self.operators = operators
         self.features = features
@@ -53,13 +67,15 @@ class PredictionGenerator(object):
         self.prediction_periods = prediction_periods
         self.period_length = period_length
         self.val = val
+        self.pytorch = pytorch
         
         
     def generate_operator_predictions(self, operator):
         p = []
         for per in self.prediction_periods:
             print('predicting {}'.format(per))
-            gm = GenerationModeler(self.data, operator, self.train_start, per, self.period_length, self.params, self.features)
+            gm = GenerationModeler(self.data, operator, self.train_start, per, 
+                 self.period_length, self.params, self.features, self.pytorch)
             gm.run()
             p.append(gm.preds)
         preds = pd.concat(p, sort=True)
@@ -104,8 +120,9 @@ class GenerationModeler(object):
         val_start (str): Prediction period start
         val_length (int): Prediction period length in days
         params (dict): Hyperparameters across model types
+        pytorch (bool): Whether to use fastai or pytorch
     """
-    def __init__(self, all_data, operator, train_start, val_start, val_length, params, features):
+    def __init__(self, all_data, operator, train_start, val_start, val_length, params, features, pytorch):
         self.all_data = all_data
         self.operator = operator
         self.train_start = train_start
@@ -113,6 +130,7 @@ class GenerationModeler(object):
         self.val_length = val_length
         self.params = params
         self.features = features
+        self.pytorch = pytorch
         self.DEP = 'solar'
         
         
@@ -171,9 +189,16 @@ class GenerationModeler(object):
         nn = NNModeler(self.operator, nndata, self.params, nmp.catvars, self.train_start, self.val_start, self.val_end)
         self.nn_val = nn.fit_predict()
         self.nn_mdl = nn.mdl
+
+
+    def fit_predict_torch_nn(self):
+        print('Running NN')
+        tnn = TorchNN(md, operator, params, catvars, train_start, val_start, val_length, dep, log_y=True, bs=128)
+        self.nn_val = tnn.fit_predict()
+        self.nn_mdl = tnn.model
         
         
-        
+    # refactor    
     def combine(self):
         print('Combining')
         preds = pd.DataFrame(list(zip(self.val.reset_index()['int_start'], self.y_val, 
@@ -190,14 +215,17 @@ class GenerationModeler(object):
         self.fit_predict_rf()
         self.fit_predict_xgb()
         self.fit_predict_knn()
-        self.fit_predict_nn()
+        if self.pytorch:
+            self.fit_predict_torch_nn()
+        else:
+            self.fit_predict_nn()
         self.combine()
 
 
 class ModelPrepper(object):
     """
-    Prepares the data for modeling - filters for features of interest,s
-    and generates categorical or dummy variables
+    Prepares the data for modeling - filters for features of interest,
+    and generates categorical and dummy variables
 
     Args:
         data (df): Base model data
@@ -215,10 +243,10 @@ class ModelPrepper(object):
         
     def get_operator_data(self):
         md = self.data
-        md = md[md['operator'] == self.operator].copy()
+        md = md.loc[md['operator'] == self.operator]
         md[self.DEP] = pd.to_numeric(md[self.DEP], errors='coerce')
-        md = md[md[self.DEP] !=0].copy()
-        #md = md[(md['hour'] > 7) & (md['hour'] < 20)].copy()
+        md = md.loc[md[self.DEP] !=0]
+        #md = md.loc[(md['hour'] > 7) & (md['hour'] < 20)]
         self.md = md.set_index(pd.DatetimeIndex(md['int_start']))
         
     
@@ -310,10 +338,144 @@ class KNNModeler(GenerationModeler):
         self.knn_mdl = self.index      
 
 
-
-class NNModeler(object):
+class TorchNN(object):
     """
-    Trains and predicts using a neural network with entity embeddings
+    Trains and predicts using a neural network with entity embeddings - pytorch
+
+    Args:
+        md (df): Prepared model data for the operator
+        operator (str): Operator to generate predictions for
+        params (dict): NN hyperparameters
+        catvars (list): List of categorical variables
+        train_start (str): Train period start
+        val_start (str): Prediction period start
+        val_length (int): Prediction period length in days
+        dep (str): Target variable
+        log_y (bool): Whether to convert target variable to log
+        bs (int): Data loader batch size
+    """
+    def __init__(self, md, operator, params, catvars, train_start, val_start, val_length, dep, log_y=True, bs=128):
+        self.md = md
+        self.operator = operator
+        self.params = params['torch_nn']
+        self.catvars = catvars
+        self.train_start = train_start
+        self.val_start = val_start
+        self.val_length = val_length
+        self.dep = dep
+        self.log_y = log_y
+        self.bs = bs
+        self.OUT_SZ = 1
+        self.CRITERION = nn.MSELoss()
+        
+    
+    def preprocess(self):
+        tdp = t.TorchTabularDataPrepper(self.md, self.catvars, self.train_start, self.val_start, 
+                                        self.val_length, self.dep, self.log_y, self.bs)
+        tdp.run()
+        self.trainloader = tdp.trainloader
+        self.valloader = tdp.valloader
+        self.emb_szs = tdp.emb_szs
+        self.continvars = tdp.continvars
+        self.y_range = tdp.y_range
+        self.valid = tdp.val
+        
+        
+    def instantiate_model(self):
+        self.model = t.TabularModel(emb_szs=self.emb_szs, 
+                                    n_cont=len(self.continvars),
+                                    emb_drop=self.params['emb_drop'], 
+                                    out_sz=self.OUT_SZ, 
+                                    layers=self.params['szs'], 
+                                    ps=self.params['drops'], 
+                                    y_range=self.y_range)
+        
+    
+    def get_training_params(self):
+        self.n_epochs = self.params['n_epochs']
+        max_lr = self.params['lr'][self.operator]
+        base_lr = max_lr/10
+        AdamW = partial(optim.Adam, betas=(0.9,0.99))
+        self.optimizer = AdamW(self.model.parameters(), lr=max_lr, weight_decay=self.params['wd'])
+        self.scheduler = c.CyclicLR(self.optimizer, base_lr=base_lr, max_lr=max_lr, step_size=self.params['step_size'])
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        
+    def set_modelpath(self):
+        model_path = pathlib.Path('models')
+        model_name = self.operator + '.pt'
+        self.model_path = model_path/model_name
+    
+    
+    def fit(self):
+        valid_loss_min = np.Inf
+        
+        for epoch in range(self.n_epochs):
+            train_loss = 0.0
+            valid_loss = 0.0
+            
+            ## TRAIN ##
+            self.model.train()
+            for x_cat, x_cont, y in self.trainloader:
+                x_cat, x_cont, y = x_cat.to(self.device), x_cont.to(self.device), y.to(self.device)
+                self.optimizer.zero_grad()
+                pred = self.model(x_cat, x_cont)
+                loss = self.CRITERION(pred, y)
+                loss.backward()
+                self.scheduler.batch_step()
+                self.optimizer.step()
+                train_loss += loss.item()
+            
+        
+            ## VALIDATE ##
+            self.model.eval()
+            with torch.no_grad():
+                for x_cat, x_cont, y in self.valloader:
+                    x_cat, x_cont, y = x_cat.to(self.device), x_cont.to(self.device), y.to(self.device)
+                    pred = self.model(x_cat, x_cont)
+                    loss = self.CRITERION(pred, y)
+                    valid_loss += loss.item()
+        
+        
+            train_loss = train_loss/len(self.trainloader)
+            valid_loss = valid_loss/len(self.valloader)
+
+            print(f'Epoch {epoch + 1}: trn_loss: {train_loss:.2f} | val_loss: {valid_loss:.2f}')
+
+            if valid_loss < valid_loss_min:
+                torch.save(self.model.state_dict(), self.model_path)
+
+    
+    def predict(self):
+        self.model.load_state_dict(torch.load(self.model_path))
+        outputs = []
+        self.model.eval()
+        with torch.no_grad():
+            for x_cat, x_cont, y in self.valloader:
+                x_cat, x_cont, y = x_cat.to(self.device), x_cont.to(self.device), y.to(self.device)
+                pred = self.model(x_cat, x_cont)
+                pred = pred.contiguous().view(-1)
+                outputs.append(pred)
+        preds = np.concatenate(outputs)
+        return preds
+    
+    
+    def fit_predict(self):
+        self.preprocess()
+        self.instantiate_model()
+        self.get_training_params()
+        self.set_modelpath()
+        self.fit()
+        if self.log_y:
+            predictions = np.exp(self.predict())
+        else:
+            predictions = self.predict()
+        return predictions
+
+
+    class NNModeler(object):
+    """
+    Trains and predicts using a neural network with entity embeddings - fastai
 
     Args:
         operator (str): Operator to generate predictions for
@@ -400,6 +562,8 @@ class NNModeler(object):
         
     
     def fit_learner(self):
+        # this earlier version of fastai doesn't support early stopping
+        # it is implemented using pytorch below
         lr = self.rparams['lr'][self.operator]
         self.m.fit(lr, 5, metrics=[self.mdpe], cycle_len=1)
         #SGD with restarts
