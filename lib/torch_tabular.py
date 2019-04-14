@@ -108,7 +108,6 @@ class TorchTabularDataPrepper(object):
         self.val = self.data.loc[(self.data.index >= self.val_start) & (self.data.index < self.val_end)]
         for i in self.train, self.val:
             i.reset_index(drop=True, inplace=True)
-            i.drop('int_start', axis=1, inplace=True)
             
 
     ###### Categorical Feature Handling

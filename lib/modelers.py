@@ -34,8 +34,8 @@ import torch.optim as optim
 import torch.nn as nn
 from functools import partial
 
-from fastai.structured import *  
-from fastai.column_data import * 
+#from fastai.structured import *  
+#from fastai.column_data import * 
 
 from lib import torch_tabular as t
 from lib import cyclic_lr as c
@@ -180,7 +180,17 @@ class GenerationModeler(object):
         self.knn_val  = knn.knn_val
         self.knn_mdl  = knn.knn_mdl
         
-    
+
+    def fit_predict_torch_nn(self):
+        print('Running NN')
+        nmp = ModelPrepper(self.all_data, self.operator, self.features, nn=True)
+        nmp.run()
+        nndata = nmp.md
+        tnn = TorchNN(nndata, self.operator, self.params, nmp.catvars, self.train_start, self.val_start, self.val_length, self.DEP, log_y=True, bs=128)
+        self.nn_val = tnn.fit_predict()
+        self.nn_mdl = tnn.model    
+
+
     def fit_predict_nn(self):
         print('Running NN')
         nmp = ModelPrepper(self.all_data, self.operator, self.features, nn=True)
@@ -191,20 +201,14 @@ class GenerationModeler(object):
         self.nn_mdl = nn.mdl
 
 
-    def fit_predict_torch_nn(self):
-        print('Running NN')
-        tnn = TorchNN(md, operator, params, catvars, train_start, val_start, val_length, dep, log_y=True, bs=128)
-        self.nn_val = tnn.fit_predict()
-        self.nn_mdl = tnn.model
-        
-        
     # refactor    
     def combine(self):
         print('Combining')
         preds = pd.DataFrame(list(zip(self.val.reset_index()['int_start'], self.y_val, 
                                       self.rf_val, self.xgb_val, self.knn_val, self.nn_val)))
         preds.columns = ['int_start','solar','rf', 'xgb', 'knn', 'nn']
-        preds['nn'] = preds['nn'].str[0]
+        if not self.pytorch:
+            preds['nn'] = preds['nn'].str[0]
         self.preds = preds
     
     
@@ -442,8 +446,10 @@ class TorchNN(object):
 
             print(f'Epoch {epoch + 1}: trn_loss: {train_loss:.2f} | val_loss: {valid_loss:.2f}')
 
-            if valid_loss < valid_loss_min:
+            if valid_loss <= valid_loss_min:
+                #print('saving model')
                 torch.save(self.model.state_dict(), self.model_path)
+                valid_loss_min = valid_loss
 
     
     def predict(self):
