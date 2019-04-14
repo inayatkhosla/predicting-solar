@@ -102,9 +102,10 @@ Ideally, this technique would be benchmarked against current forecasting methods
 
 ## Usage
 ### Environment
-- Create environment: `conda env create -f environment.yml`
-- The deep learning code is implemented in pytorch. Those new to deep learning can alternatively use the fastai implementation (a wrapper around pytorch that makes things simpler). 
-- We'll use an earlier version of fastai that makes it easier to see what's going on behind the scenes -  `pip install fastai==0.7.0` 
+- Create a python3 environment
+- Install dependencies: `pip install -r requirements.txt`
+- The neural networks are implemented in PyTorch. Those new to deep learning can alternatively use the fastai implementation (a wrapper around PyTorch that makes things simpler)
+- An earlier version of fastai (0.7) is used to make it easier to see what's going on behind the scenes - installation instructions can be found [here](https://github.com/fastai/fastai/tree/master/old)
 
 ### Data
 The data folder contains both cleaned, processed data, as well as sample raw
